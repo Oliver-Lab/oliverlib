@@ -25,8 +25,9 @@ class FastQC(object):
                     if row.startswith('##FastQC'):
                         self.version = row.split()[1]
                     elif row == '>>END_MODULE\n':
-                        cb = FastQCBlock(currBlock)
-                        self.blocks[cb.id] = cb
+                        if len(currBlock) > 1:
+                            cb = FastQCBlock(currBlock)
+                            self.blocks[cb.id] = cb
                         currBlock = None
                     elif row.startswith('>>'):
                         currBlock = [row.lstrip('>>').rstrip()]
