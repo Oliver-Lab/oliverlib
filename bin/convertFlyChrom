@@ -1,0 +1,124 @@
+#!/usr/bin/env python
+""" Converts chromosome names for Drosophila melanogaster.
+
+One problem in the D. mel world is that different sites (i.e. UCSC, FlyBase,
+NCBI) all use different chromsome names. This is simple converty to switch
+between these different data types.
+
+"""
+import pandas as pd
+import argparse
+import logging
+
+loger = logging.getLogger()
+fmt = logging.Formatter()
+
+class chromMap(object):
+    def __init__(self):
+        # Download chrom map from NCBI
+        self.df = pd.read_csv('ftp://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/All/GCF_000001215.4.assembly.txt', sep='\t', skiprows=28)
+        self.df.columns = [x.strip('#').strip() for x in self.df.columns]
+        # Column Names: 
+        #   'Sequence-Name', 'Sequence-Role', 'Assigned-Molecule', 
+        #   'Assigned-Molecule-Location/Type', 'GenBank-Accn', 
+        #   'Relationship', 'RefSeq-Accn', 'Assembly-Unit', 
+        #   'Sequence-Length', 'UCSC-style-name'
+        # NOTE: FlyBase is the 'Sequence-Name'
+
+        self.FlyBase2UCSC = self._create_map_dict('Sequence-Name', 'UCSC-style-name')
+        self.FlyBase2GenBank = self._create_map_dict('Sequence-Name', 'GenBank-Accn')
+        self.FlyBase2RefSeq = self._create_map_dict('Sequence-Name', 'RefSeq-Accn')
+
+        self.UCSC2FlyBase = self._create_map_dict('UCSC-style-name', 'Sequence-Name')
+        self.UCSC2GenBank = self._create_map_dict('UCSC-style-name', 'GenBank-Accn')
+        self.UCSC2RefSeq = self._create_map_dict('UCSC-style-name', 'RefSeq-Accn')
+
+        self.GenBank2FlyBase = self._create_map_dict('GenBank-Accn', 'Sequence-Name')
+        self.GenBank2UCSC = self._create_map_dict('GenBank-Accn', 'UCSC-style-name')
+        self.GenBank2RefSeq = self._create_map_dict('GenBank-Accn', 'RefSeq-Accn')
+
+        self.RefSeq2FlyBase = self._create_map_dict('RefSeq-Accn', 'Sequence-Name')
+        self.RefSeq2UCSC = self._create_map_dict('RefSeq-Accn', 'UCSC-style-name')
+        self.RefSeq2GenBank = self._create_map_dict('RefSeq-Accn', 'GenBank-Accn')
+
+    def _create_map_dict(self, col1, col2):
+        return self.df[[col1, col2]].set_index(col1).to_dict()[col2]
+
+    def get_FlyBase(self, chrom):
+        try:
+            return self.UCSC2FlyBase[chrom]
+        except:
+            pass
+
+        try:
+            return self.GeneBank2FlyBase[chrom]
+        except:
+            pass
+
+        try:
+            return self.RefSeq2FlyBase[chrom]
+        except:
+            raise KeyError
+
+    def get_UCSC(self, chrom):
+        try:
+            return self.FlyBase2UCSC[chrom]
+        except:
+            pass
+
+        try:
+            return self.GeneBank2UCSC[chrom]
+        except:
+            pass
+
+        try:
+            return self.RefSeq2UCSC[chrom]
+        except:
+            raise KeyError
+
+    def get_GenBank(self, chrom):
+        try:
+            return self.FlyBase2GenBank[chrom]
+        except:
+            pass
+
+        try:
+            return self.UCSC2GenBank[chrom]
+        except:
+            pass
+
+        try:
+            return self.RefSeq2GenBank[chrom]
+        except:
+            raise KeyError
+
+    def get_RefSeq(self, chrom):
+        try:
+            return self.FlyBase2RefSeq[chrom]
+        except:
+            pass
+
+        try:
+            return self.UCSC2RefSeq[chrom]
+        except:
+            pass
+
+        try:
+            return self.GenBank2RefSeq[chrom]
+        except:
+            raise KeyError
+
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--fasta', required=False)
+    ap.add_argument('--bam', required=False)
+    ap.add_argument('--sam', required=False)
+    ap.add_argument('--bed', required=False)
+    ap.add_argument('--gff', required=False)
+    ap.add_argument('-o', help='Output file name', required=True)
+
+    args = ap.parse_args()
+
+
+    chromMap = chromMap()
+

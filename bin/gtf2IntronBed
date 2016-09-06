@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+import os
+import argparse
+import logging
+
+import gffutils
+import pybedtools
+
+
+def readGFF(gff):
+    """ Read a GFF file and create a GFFUTILS database if needed.
+
+    Looks for a GFF utils database. If it does not have one then it creates
+    one.
+
+    Parameters
+    ----------
+    gff: str
+        Name of the GFF or GTF file to be parsed.
+            
+
+    """
+
+    # Need to figure out if the FILE is a database (db) a gzipped file (gz) or a gff/gtf file.
+    if gff.endswith('db'):
+        return gffutils.FeatureDB(gff)
+    else:
+        if os.path.exists(gff.rstrip('.gz') + '.db'):
+            return gffutils.FeatureDB(gff.rstrip('gz') + 'db')
+
+
+    if gff.endswith('gz'):
+        from subprocess import check_call, PIPE
+        import tempfile
+
+        tmp = gff.strip('.gz')
+        proc = check_call('gunzip -c {0} > {1}'.format(gff, tmp), shell=True, stdout=PIPE, stderr=PIPE)
+        gff = tmp
+    else:
+        tmp = False
+
+
+    # Database output file name
+    dbfn = gff + '.db'
+
+    # Figure out if it is a gff or gtf and make the databae
+    if gff.lower().endswith('gff'):
+        db = gffutils.create_db(data=gff, dbfn=dbfn, merge_strategy='merge')
+    elif gff.lower().endswith('gtf'):
+        db = gffutils.create_db(data=gff, dbfn=dbfn, merge_strategy='merge', 
+                id_spec={'transcript': ['transcript_id', 'transcript_symbol'], 'gene': ['gene_id', 'gene_symbol']}, 
+                gtf_transcript_key='transcript_id', gtf_gene_key='gene_id')
+
+    # Delete the tmp file if it was extracted from gunzip
+    if tmp:
+        os.unlink(tmp)
+
+    return db
+
+
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--gff',
+            help='GFF or GTF file. Can be zippd with gzip')
+
+    args = ap.parse_args()
+
